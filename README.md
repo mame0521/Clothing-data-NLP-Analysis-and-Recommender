@@ -9,9 +9,13 @@ In this project, we conduct analysis on the rating and fit of customers based on
 
 The raw data collected from RentTheRunway.com, containing 192,544 records from 105,508 users regarding 5,850 items.
 
+To download this file, please go to https://www.dropbox.com/s/9omw6s9bh8vxkgu/renttherunway_final_data.json?dl=0.
+
 `glove.6B.100d.txt`
 
 The corpus which is used to train the Glove model (with the embedding dimensions of 100).
+
+To download this file, please go to https://www.dropbox.com/s/sc5uzmrcype7udr/glove.6B.100d.txt?dl=0 or refer to https://nlp.stanford.edu/projects/glove/.
 
 `code.ipynb`
 
