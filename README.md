@@ -1,11 +1,274 @@
 # Clothing-data-NLP-Analysis-and-Recommender
+
 A course project of Analyzing Unstructured Data class at UCSD
 
-## Description
+## 1. Description
+
 In this project, we conduct analysis on the rating and fit of customers based on the e-commerce clothing data collected from RentTheRunway.com, and then develop a recommender to return similar items given the user inputs. From the model results, we conclude that review texts could largely improve the performance of classifiers which only includes customer demographics and body measurements. Other than that, word embedding models such as Skip-gram and CBOW which focus on learning from context perform best among a series of text mining models.
 
 
+## 2. Data Preprocessing
 
+In this project, we use open-sourced clothing fit data which is collected from *RentTheRunway*. The *RentTheRunway* dataset contains 192,544 records from 105,508 users regarding 5,850 items. Our original source of data is in json format. To better manipulate data and conduct further analysis, we convert it to a pandas dataframe. As Figure 1 shows, the raw dataset contains missing values and some of its body measurement indexes are not in numeric formats.
+
+
+
+![image-20230313185424732](https://gitee.com/flycloud2009_cloudlou/img/raw/master/img/202303132206113.png)
+
+Figure 1: First 5 rows of raw dataset
+
+
+
+To handle these issues, first of all, we check the proportion of missing values in each column.  we can see that 6 features contain missing values. For these columns, we fill in their modes to replace missing values. And for feature columns which we expect to have numeric, we transform them to their corresponding units. For bust size and weight, we extract the number part as feature values, and create a new variable cup to store the letters after the number in bust size. And for height, since the original values are in feet and inches, we extract the numbers of feet and inches, convert 1 feet to 12 inches, and recalculate these
+values in inches to obtain the height data in numeric format.
+
+![image-20230313221641775](https://gitee.com/flycloud2009_cloudlou/img/raw/master/img/202303132216624.png)
+
+Figure 2: Proportion of missing values
+
+From Figure 2, we can see that 6 features contain missing values. For these columns, we fill in their modes to replace missing values. And for feature columns which we expect to have numeric, we transform them to their corresponding units. For *bust size* and *weight*, we extract the number part as feature values, and create a new variable cup to store the letters after the number in *bust size*. And for *height*, since the original values are in feet and inches, we extract the numbers of feet and inches, convert 1 feet to 12 inches, and recalculate these values in inches to obtain the height data in numeric format.
+
+And for text variables, we use **nltk** package to conduct tokenization and stemming operations for them, then we convert tokens to lower cases and remove the stop words. Specifically, we find the list of stop words in **nltk.corpus** package does not contain some frequent stop words in review text, so we manually added about 30 words into this list to keep it consistent with our data.
+
+
+
+## 3. Exploratory Data Analysis
+
+To explore the characteristics of each column, we conduct univariate analysis for features and response
+variables.
+
+For our 4 response variables fit, rating, rented for, and category, since rating only have 5 levels of response value and the other 3 are all categorical variables, we create some barplot to explore their distributions.
+
+![png](https://gitee.com/flycloud2009_cloudlou/img/raw/master/img/202303132206280.png)
+
+Figure 3: Proportion of variables
+
+    
+
+
+
+From Figure 3 we find that for fit, more than 70% of customers think the clothes that they get fits all, and
+the probabilities of being small or being large are about 10% for each level.
+
+For *rating*, 10 (the highest rating) has the highest proportion of about 60%, and as rating decreases, the proportion also decreases. These 2 variables indicate that most customers are satisfied with the products
+and services offered by *RentTheRunway*. 
+
+And from the distribution of variables *rented for* and *category*, we find that most popular categories are
+formal dresses which are required for some public affairs. It makes sense since *RentTheRunway* offers
+clothes sharing services. For daily dressing which has higher re-use probability, people are more likely
+to make purchases instead of renting. 
+
+![png](https://gitee.com/flycloud2009_cloudlou/img/raw/master/img/202303132206983.png)
+
+Figure 4: Proportion of categorical features
+
+         
+
+Then for features, we use barplot for categorical features and boxplot for numeric features. In Figure
+4, we can see that most customers have medium body shapes. It may be because these kinds of
+people could find more suitable clothes on a cloth-sharing website and the website also has a
+willingness to offer more clothes in medium sizes since they will have higher turnover rate and
+generate more profit.
+
+![png](https://gitee.com/flycloud2009_cloudlou/img/raw/master/img/202303132206513.png)
+
+Figure 5: Distribution of numeric features
+
+    
+
+In Figure 5, we use boxplot to explore and examine the distribution of numeric features. Specifically,
+what we should pay attention to is the distribution of *age*. For variable age, we find there are many
+outliers and the range of *age* is [0,120], which is obviously abnormal. We assume that some
+customers are unwilling to offer their actual ages and inputs below 15 or above 70 may be fake ages. We
+replace these values with mode to make the variable more likely to obey a convincing distribution.
+
+Besides univariate analysis, we also generate pairplot for bivariate analysis.
+
+![png](https://gitee.com/flycloud2009_cloudlou/img/raw/master/img/202303132206016.png)
+
+    
+
+Figure 6: Pairplot of numeric features
+
+From Figure 6, we find that among 4 features bust_number, weight, height, and age, variable weight shows some positive correlations with height and bust_number from the scatter plot. To further examine the correlations, we build a correlation matrix of these variables. In the correlation matrix, all pairs of variables show positive correlations,  which is consistent with the actual fact that people who are taller or have larger bust numbers will have higher weights. However, the correlation between bust_number and weight is  noteworthy since it is rather high. In our modelling part, we will keep track of these 2 variables to check if we should do some adjustments. 
+
+Then, we perform the VIF test on all variables as a  whole, and the obtained VIF value is 2.28, indicating
+that there is no significant multicollinearity among the variables. Therefore, we keep all the current features.
+
+![png](https://gitee.com/flycloud2009_cloudlou/img/raw/master/img/202303132206618.png)
+
+   Figure 7: Correlation matrix
+
+         
+
+The *RentTheRunway* dataset also contains 2 text variables, *review_summary* and *review_text*.
+Previewing the raw data, we find *review_summary* contains phrases extracted from review_text which
+include some key information such as cloth category and customer sentiments, but other customer
+features are omitted. Since we need text to generate word vectors and build our model, we choose
+*review_text* as our text variable since it could provide more comprehensive information. After
+tokenization, we build a word cloud to demonstrate the frequent words in our text.
+
+
+
+![png](https://gitee.com/flycloud2009_cloudlou/img/raw/master/img/202303132206467.png)
+
+ Figure 8: Word cloud of review_text
+
+        
+
+From our word cloud, “dress” is the most mentioned word, followed by words related to customer
+experience such as “fit” and “size”. Among these words, while “fit” is mentioned the most, “little” is
+also frequently brought up, which might be an indication of less satisfied customers. Also there are
+some frequent positive words like “great”, “perfect” and “loved”, which is consistent with the previous
+barplot that customers overall feedback in rating are rather satisfactory.
+
+
+
+## 4. Research Problem
+
+There are three goals of our research. First, we want to know whether adding review would increase
+model accuracy when predicting whether a clothes fit a person or not. Second, whether adding reviews
+variable would increase model performance when predicting customer rating. Third, we build a
+recommendation model which recommends clothing categories based on user input.
+
+#### 4.1 Input variables
+
+For predictive models which predict fit and rating, the input variables include bust number, weight,
+height, size, age, cup, body type, review. For the recommender, the input is the item which a user rated
+the highest in the past. For the reviews in predictive models, we try different preprocessing methods to convert text.  These include converting reviews to vectors applying word2vec (Skip-gram & CBOW), GloVe,
+and Tf-Idf.
+
+#### 4.2 Output variables
+
+The output variables for predictive models are fit and rating. For the recommender, the output variable is
+item_id, and its corresponding category and rent for, which means that the model would recommend top 5
+items which have the highest similarity with the user input.
+
+#### 4.3 Baseline Model
+
+The goal for our project is to see whether adding “text” would improve model accuracy, thus the
+baseline model is adding all variables except review. The variables include bust number, weight, height,
+size, age, cup, body type. The reason that the model adding text could outperforms the baseline is that
+first, we only keep important words in each row, and deleted pronouns, prepositions, and other common
+words, such as “I, you, he, she, when, where, what, and, also, to, oh, of”, thus reduced the noise caused by not related words. Second, language models learn patterns from corpus, thus they are able to increase
+characteristics for each data entry.
+
+#### 4.4 Methods to compare and evaluate model
+
+For fit predicting model and rating predicting model, we compare the performance of model using
+different NLP techniques including ***word2vec*** (Skip-gram & CBOW), ***GloVe***, and ***Tf-Idf.*** To evaluate model performance, we compare *AUC-score*, *F1-score*, and *accuracy* of each model. The higher the AUC, the better the performance of the model at distinguishing classes.
+
+
+
+## 5. Proposed Solution
+
+Since our purpose is to classify variables *fit* and *rating*, we try logistic regression without and with
+review text to clarify whether text is useful in this task. 
+
+To compare the effect of text on the model, we try different bags of words and word embedding
+methods to process review text. Bag of words can build a vocabulary from a corpus of documents and
+counts how many times the words appear in each document. To put it another way, each word in the
+vocabulary becomes a feature and a document is represented by a vector with the same length of the
+vocabulary. This approach causes a significant dimensionality problem: the more documents you
+have the larger is the vocabulary, so the feature matrix will be a huge sparse matrix. Therefore, in
+order to use this way more efficiently, we do a lot of important preprocessing like word cleaning, stop
+word removal, stemming to reduce the dimensionality problem. 
+
+Word embeddings are methods which look for a latent space to preserve the semantics as much as
+possible. Words from the vocabulary are mapped to vectors of real numbers. These vectors are calculated
+from the probability distribution for each word appearing before or after another. These methods are  able to capture many linguistic regularities of words as well as taking their context into consideration. 
+
+To be more specific, we try ***binary***, ***frequency***, ***TF-IDF***, ***word to vector***, ***GloVe*** and ***CBOW*** to process data and retrain the classification models. Then we compare the models’ accuracy, auroc_rate, F1-score(both macro and micro）and choose the best one as the with-text result. Then we compare it with the model’s result without text and to find the improvement of adding text. 
+
+Finally, to make our project more useful, we design a recommender system based on existing information. The recommendation system is constructed based on the ratings given to the item by existing users and the Jaccard similarity. When existing users enter their id, they can see the top 10 products recommended by the system based on their ratings. In addition, we also output the categories of these ten products and the occurrences used, so that customers can choose according to their own needs.
+
+
+
+## 6 Experimental Results
+
+#### 6.1 Prediction Model Comparison 
+
+To reduce the cost of training and tuning, we randomly shuffle the original dataset and pick 50,000
+records as our dataset for model comparison. Among these 50,000 records, we split them into a training set with 40,000 records and a testing set with 10,000 records. Table 1 shows the evaluation scores of different fitting models on the testing set. 
+
+![image-20230313203630901](https://gitee.com/flycloud2009_cloudlou/img/raw/master/img/202303132206841.png)
+
+As we can see from Table 1, all the 4 models show improvement from baseline, which indicates that
+review texts do provide more latent information for us to predict user fit. The performance of these
+models is not very different. However, in this project, we believe that AUROC can better reflect the pros
+and cons of the model in a balanced manner, so we finally choose the AUROC indicator to select the
+model. And among the 4 text models, ***CBOW*** has the best AUROC score.
+
+![image-20230313203735503](https://gitee.com/flycloud2009_cloudlou/img/raw/master/img/202303132206126.png)
+
+And from Table 2, when predicting rating, text models also outperform the baseline model. Among
+these models, Skip Gram has the best AUROC score. 
+
+From above results, in general, ***word2v*** (CBOW and Skip Gram) has the best performance. Then, because
+the model effect of ***CBOW*** and ***skip-gram*** is not very different, and in this task, whether the clothes fit the
+customer is more important, finally we chose the ***CBOW*** model. We re-estimate this model on the
+whole dataset with 192,544 records and get the following results.
+
+![image-20230313203841462](https://gitee.com/flycloud2009_cloudlou/img/raw/master/img/202303132206442.png)
+
+As Table 3, the performances of ***CBOW*** model are similar on partial datasets as well as on the full
+dataset, which means our model is stable. 
+
+
+
+#### 6.2 Recommender System Examples
+
+In our recommender, based on cosine similarity, for  each user within the dataset, we find 10 most similar
+items for them and return the categories and rented_for reasons as well. In Table 4, we randomly
+choose a user and show the recommendation for them.
+
+![image-20230313204354035](https://gitee.com/flycloud2009_cloudlou/img/raw/master/img/202303132206070.png)
+
+
+
+## 7 Conclusion and Outlook
+
+In conclusion, we have the following findings from our analysis.
+
+First, from the data collected from *RentTheRunway*, the majority of its customers have high evaluation of
+the services and products. The main reason that customers would like to use cloth sharing service is to prepare for some formal affairs, and most of the customers are of medium figure, which may be because this kind of customers are exactly whom *RentTheRunway* wants to target.
+
+Second, baseline models of logistic regression which excluded text variables show poor performance in
+predicting user fit and rating. In Particular, the macro F1 scores of baseline models are extremely low,
+which suggests that the classifiers are affected by imbalanced data and have low accuracy in predicting
+the minority levels.
+
+Third, ***Skip-gram*** and ***CBOW*** models show the best performance among all the text models involved in
+this project. Possible reason is that under this e-commerce situation, a user’s fit and overall evaluation are much more likely to be mentioned in user comments, so these models which generate word embeddings based on the study of context outperform other models.
+
+Also, our project still has some weaknesses which suggest the potential space for improvement.
+
+First, when examining the impact of text compared with other features, we use only *logistic regression*
+models. Though models with text features added do perform better than *logistic regression*, if we parse
+original features into more complex machine learning models, they may generate better performance. In the future, we will consider comparing text models with other models to further study their impacts.
+
+Secondly, when building text models, we only develop some simple frequency-based models and word embedding models. During the experiment, we tried to build a Bert model, however it failed to return expected outputs in time since it had higher requirements for devices. In the future, if possible, we are going to try more language models with advanced devices.
+
+And for the recommender system we build, it returns recommendations based on existing records of certain users. However it does not solve the cold start problem that we cannot apply it to generate
+recommendations for new customers. To address this issue, we have proposed plans including introducing
+random numbers, returning average, or asking for more features from new customers that we can use
+***KNN*** to find some similar users in our records and then apply our recommender system to them.
+
+And lastly, for the deliverable, we are planning to create some more applicable forms to better demonstrate our models and let them be accessible to amateurs as well. In the future, we are going to build an interactive tool which allows inputs of body features and desired categories/situations to return
+customized recommendations for users. 
+
+
+
+## 8 Reference
+
+[1] Rishabh Misra, Mengting Wan, Julian McAuley (2018). Decomposing fit semantics for product size
+recommendation in metric spaces.
+
+[2] Hsin-Yu Chen, Huang-Chin Yen, Tian Tian (2020) Female Clothing E-commerce Review and Rating.
+
+
+
+Code:
 
 ```python
 import pandas as pd
@@ -135,6 +398,8 @@ df_raw.head()
     }
 
 
+
+
     .dataframe tbody tr th {
         vertical-align: top;
     }
@@ -260,6 +525,8 @@ df_raw.head()
   </tbody>
 </table>
 
+
+
 </div>
 
 
@@ -341,6 +608,8 @@ df_raw.loc[:,col_feature].mode()
     }
 
 
+
+
     .dataframe tbody tr th {
         vertical-align: top;
     }
@@ -375,6 +644,8 @@ df_raw.loc[:,col_feature].mode()
     </tr>
   </tbody>
 </table>
+
+
 
 </div>
 
@@ -477,6 +748,8 @@ df_clean.head()
     .dataframe tbody tr th:only-of-type {
         vertical-align: middle;
     }
+
+
 
 
     .dataframe tbody tr th {
@@ -585,6 +858,8 @@ df_clean.head()
     </tr>
   </tbody>
 </table>
+
+
 
 </div>
 
@@ -832,6 +1107,8 @@ dataset_50k.head()
     }
 
 
+
+
     .dataframe tbody tr th {
         vertical-align: top;
     }
@@ -938,6 +1215,8 @@ dataset_50k.head()
     </tr>
   </tbody>
 </table>
+
+
 
 </div>
 
@@ -1526,6 +1805,8 @@ compare_fit.round(4)
     }
 
 
+
+
     .dataframe tbody tr th {
         vertical-align: top;
     }
@@ -1583,6 +1864,7 @@ compare_fit.round(4)
   </tbody>
 </table>
 
+
 </div>
 
 
@@ -1603,11 +1885,15 @@ compare_rate.round(4)
 
 
 
+
+
 <div>
 <style scoped>
     .dataframe tbody tr th:only-of-type {
         vertical-align: middle;
     }
+
+
 
 
     .dataframe tbody tr th {
@@ -1666,6 +1952,7 @@ compare_rate.round(4)
     </tr>
   </tbody>
 </table>
+
 
 </div>
 
@@ -1835,6 +2122,8 @@ compare_full_fit.round(4)
     }
 
 
+
+
     .dataframe tbody tr th {
         vertical-align: top;
     }
@@ -1882,6 +2171,7 @@ compare_full_fit.round(4)
   </tbody>
 </table>
 
+
 </div>
 
 
@@ -1895,6 +2185,7 @@ compare_full_rate = pd.DataFrame({
 },index = ['auroc','f1_mac','f1_mic','accuracy'])
 compare_full_rate['improvement'] =  (compare_full_rate['CBOW_full']-compare_full_rate['baseline_full'])
 compare_full_rate.round(4)
+
 ```
 
 
@@ -1905,6 +2196,8 @@ compare_full_rate.round(4)
     .dataframe tbody tr th:only-of-type {
         vertical-align: middle;
     }
+
+
 
 
     .dataframe tbody tr th {
@@ -1953,6 +2246,7 @@ compare_full_rate.round(4)
     </tr>
   </tbody>
 </table>
+
 
 </div>
 
@@ -2041,10 +2335,10 @@ print(mostSimilarItem(user_fav(str(UserId))))
 
 
 
-
-
 ## -------------------------------------------------
+
 ## Attached Files
+
 `renttherunway_final_data.json`
 
 The raw data collected from RentTheRunway.com, containing 192,544 records from 105,508 users regarding 5,850 items.
@@ -2066,6 +2360,7 @@ The code containing all the works mentioned in our report.
 The final report which includes detailed process.
 
 ## Reference
+
 Rishabh Misra, Mengting Wan, Julian McAuley (2018). *Decomposing fit semantics for product size recommendation in metric spaces.*
 
 https://cseweb.ucsd.edu//~jmcauley/pdfs/recsys18e.pdf
